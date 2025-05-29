@@ -16,9 +16,11 @@ public class PaymentRequestDto {
     @NotNull(message = "Order ID is required")
     private Long orderId;
 
+    @NotNull(message = "User ID is required")
+    private long userId;
+
     @Min(value = 1, message = "Amount must be at least 1")
     private double amount;
 
-    @NotNull(message = "Payment status is required")
-    private String status;  // e.g., "PAID", "FAILED"
+    private String status;
 }

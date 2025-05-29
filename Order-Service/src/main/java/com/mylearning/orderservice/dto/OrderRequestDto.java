@@ -10,6 +10,9 @@ import lombok.*;
 @AllArgsConstructor
 public class OrderRequestDto {
 
+    @NotBlank(message = "User ID is required")
+    private Long userId;
+
     @NotBlank(message = "Product code is required")
     private String productCode;
 

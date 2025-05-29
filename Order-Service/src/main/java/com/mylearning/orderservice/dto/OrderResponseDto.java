@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Builder
 public class OrderResponseDto {
     private Long id;
+    private Long userId;
     private String productCode;
     private int quantity;
     private LocalDateTime orderDate;

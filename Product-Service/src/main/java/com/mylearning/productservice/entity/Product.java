@@ -17,6 +17,9 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
+    @Column(nullable = false, unique = true)
+    private String productCode;
+
     @Column(nullable = false)
     private String name;
 
@@ -28,4 +31,5 @@ public class Product {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
 }

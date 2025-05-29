@@ -39,4 +39,12 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ProductNotFoundException("Product not found with ID: " + id)));
 
     }
+
+    @Override
+    public ProductResponseDto getByProductCode(String productCode) {
+        return ProductMapper.mapToProductResponseDto(productRepository.findByProductCode(productCode)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found with Product Code: " + productCode)));
+
+    }
+
 }

@@ -22,6 +22,9 @@ public class Payment {
     private Long orderId;
 
     @Column(nullable = false)
+    private Long userId;
+
+    @Column(nullable = false)
     private double amount;
 
     @Column(nullable = false)

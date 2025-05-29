@@ -12,9 +12,11 @@ import java.util.UUID;
 public class NotificationRequestDto {
 
     @NotNull(message = "Order ID is required")
-    private UUID orderId;
+    private Long orderId;
 
-    @NotBlank(message = "User email is required")
+    @NotNull(message = "User ID is required")
+    private Long userId;
+
     private String userEmail;
 
     @NotBlank(message = "Message is required")

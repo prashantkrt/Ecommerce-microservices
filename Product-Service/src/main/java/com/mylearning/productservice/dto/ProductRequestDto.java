@@ -10,6 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 public class ProductRequestDto {
+
+    @NotBlank(message = "Product code is required")
+    private String productCode;
+
     @NotBlank(message = "Product name is required")
     private String name;
 
