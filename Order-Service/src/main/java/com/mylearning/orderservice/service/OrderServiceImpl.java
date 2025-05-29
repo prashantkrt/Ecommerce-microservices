@@ -5,6 +5,8 @@ import com.mylearning.orderservice.entity.Order;
 import com.mylearning.orderservice.exception.OrderNotFoundException;
 import com.mylearning.orderservice.exception.OutOfStockException;
 import com.mylearning.orderservice.repository.OrderRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +40,8 @@ public class OrderServiceImpl implements OrderService {
     private String notificationServiceUrl;
 
     @Override
+    @CircuitBreaker(name = "orderService", fallbackMethod = "placeOrderFallback")
+    @Retry(name = "orderService")
     public OrderResponseDto placeOrder(OrderRequestDto requestDto) {
 
         log.info("Start placing order for productCode={} by userId={}", requestDto.getProductCode(), requestDto.getUserId());
@@ -129,5 +133,11 @@ public class OrderServiceImpl implements OrderService {
                 .quantity(order.getQuantity())
                 .orderDate(order.getOrderDate())
                 .build();
+    }
+
+    public OrderResponseDto placeOrderFallback(OrderRequestDto requestDto, Throwable t) {
+        log.error("Fallback called for placeOrder due to: {}", t.toString());
+        // You can return a default response or throw a custom exception here
+        throw new RuntimeException("Order service is currently unavailable, please try later.");
     }
 }

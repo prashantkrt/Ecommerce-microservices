@@ -7,7 +7,10 @@ import com.mylearning.paymentservice.entity.Payment;
 import com.mylearning.paymentservice.exception.PaymentFailureException;
 import com.mylearning.paymentservice.exception.PaymentNotFoundException;
 import com.mylearning.paymentservice.repository.PaymentRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -17,12 +20,15 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final RestTemplate restTemplate;
 
     @Override
+    @CircuitBreaker(name = "paymentService", fallbackMethod = "handlePaymentFailure")
+    @Retry(name = "paymentService")
     public PaymentResponseDto processPayment(PaymentRequestDto request) {
         // Validate user by calling user-service
         String userServiceUrl = "http://user-service/api/users/" + request.getUserId();
@@ -52,6 +58,7 @@ public class PaymentServiceImpl implements PaymentService {
         return mapToDto(payment);
     }
 
+
     @Override
     public List<PaymentResponseDto> getAllPayments() {
         return paymentRepository.findAll()
@@ -69,6 +76,30 @@ public class PaymentServiceImpl implements PaymentService {
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
                 .paymentDate(payment.getPaymentDate())
+                .build();
+    }
+
+
+    public PaymentResponseDto handlePaymentFailure(PaymentRequestDto request, Throwable throwable) {
+        log.error(" Payment processing failed for orderId={} due to: {}", request.getOrderId(), throwable.getMessage());
+
+        // Optional: Save failed payment attempt with status FAILED
+        Payment failedPayment = Payment.builder()
+                .orderId(request.getOrderId())
+                .amount(request.getAmount())
+                .status("FAILED")
+                .userId(request.getUserId())
+                .paymentDate(LocalDateTime.now())
+                .build();
+
+        paymentRepository.save(failedPayment);
+
+        // Return a response indicating failure
+        return PaymentResponseDto.builder()
+                .orderId(request.getOrderId())
+                .userId(request.getUserId())
+                .amount(request.getAmount())
+                .status("FAILED")
                 .build();
     }
 }
