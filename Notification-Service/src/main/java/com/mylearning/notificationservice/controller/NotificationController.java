@@ -14,6 +14,11 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("Notification Service is running");
+    }
+
     @PostMapping
     public ResponseEntity<String> notifyOrderSuccess(@Valid @RequestBody NotificationRequestDto request) {
         return ResponseEntity.ok(notificationService.sendNotification(request));
