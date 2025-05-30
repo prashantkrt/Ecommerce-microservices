@@ -93,7 +93,7 @@ class NotificationControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(jsonPath("$.message").value("Message is required"));
                 
         // Verify service was not called
         verify(notificationService, never()).sendNotification(any(NotificationRequestDto.class));
@@ -105,6 +105,7 @@ class NotificationControllerTest {
         // Arrange
         requestDto.setOrderId(null); // Missing required field
         requestDto.setUserId(null);   // Missing required field
+        requestDto.setMessage(null);  // Missing required field
 
         // Act & Assert - Expect validation to fail with 400 status and specific error messages
         mockMvc.perform(post("/api/notifications")
@@ -112,7 +113,8 @@ class NotificationControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.orderId").value("Order ID is required"))
-                .andExpect(jsonPath("$.userId").value("User ID is required"));
+                .andExpect(jsonPath("$.userId").value("User ID is required"))
+                .andExpect(jsonPath("$.message").value("Message is required"));
                 
         // Verify service was not called
         verify(notificationService, never()).sendNotification(any(NotificationRequestDto.class));

@@ -5,7 +5,6 @@ import com.mylearning.productservice.dto.ProductResponseDto;
 import com.mylearning.productservice.entity.Product;
 import com.mylearning.productservice.exception.ProductNotFoundException;
 import com.mylearning.productservice.repository.ProductRepository;
-import com.mylearning.productservice.util.ProductMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -7,16 +7,12 @@ import com.mylearning.paymentservice.exception.GlobalExceptionHandler;
 import com.mylearning.paymentservice.exception.PaymentFailureException;
 import com.mylearning.paymentservice.exception.PaymentNotFoundException;
 import com.mylearning.paymentservice.service.PaymentService;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -34,11 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
-@SpringBootTest
-@AutoConfigureMockMvc
 class PaymentControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
     @Mock
@@ -47,12 +40,12 @@ class PaymentControllerTest {
     @InjectMocks
     private PaymentController paymentController;
 
-    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {
-        MockitoAnnotations.openMocks(this);
+        objectMapper = new ObjectMapper();
+        objectMapper.findAndRegisterModules();
         mockMvc = MockMvcBuilders.standaloneSetup(paymentController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -99,7 +92,10 @@ class PaymentControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(400)));
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.errors").exists())
+                .andExpect(jsonPath("$.errors.orderId").value("Order ID is required"))
+                .andExpect(jsonPath("$.errors.amount").value("Amount must be at least 1"));
 
         verify(paymentService, never()).processPayment(any());
     }
@@ -121,7 +117,8 @@ class PaymentControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.status", is(500)));
+                .andExpect(jsonPath("$.status", is(500)))
+                .andExpect(jsonPath("$.message").value("Payment processing failed"));
     }
 
     @Test
@@ -158,7 +155,8 @@ class PaymentControllerTest {
         mockMvc.perform(get("/api/payments/999")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status", is(404)));
+                .andExpect(jsonPath("$.status", is(404)))
+                .andExpect(jsonPath("$.message").value("Payment not found with id: 999"));
     }
 
     @Test

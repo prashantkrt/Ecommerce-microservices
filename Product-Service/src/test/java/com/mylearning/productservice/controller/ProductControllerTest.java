@@ -3,6 +3,7 @@ package com.mylearning.productservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mylearning.productservice.dto.ProductRequestDto;
 import com.mylearning.productservice.dto.ProductResponseDto;
+import com.mylearning.productservice.exception.GlobalExceptionHandler;
 import com.mylearning.productservice.exception.ProductNotFoundException;
 import com.mylearning.productservice.service.ProductService;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,10 +40,13 @@ class ProductControllerTest {
     private ProductResponseDto productResponseDto;
     private ProductRequestDto productRequestDto;
 
+    private GlobalExceptionHandler globalExceptionHandler;
+
     @BeforeEach
     void setUp() {
+        globalExceptionHandler = new GlobalExceptionHandler();
         mockMvc = MockMvcBuilders.standaloneSetup(productController)
-                .setControllerAdvice()
+                .setControllerAdvice(globalExceptionHandler)
                 .build();
 
         productResponseDto = ProductResponseDto.builder()
@@ -131,7 +135,12 @@ class ProductControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidProduct)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors").isMap());
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errors").isMap())
+                .andExpect(jsonPath("$.errors.productCode").value("Product code is required"))
+                .andExpect(jsonPath("$.errors.name").value("Product name is required"))
+                .andExpect(jsonPath("$.errors.description").value("Description is required"))
+                .andExpect(jsonPath("$.errors.price").value("Price is required"));
 
         verify(productService, never()).create(any(ProductRequestDto.class));
     }

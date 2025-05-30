@@ -7,14 +7,16 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserResponseDto {
     private Long id;
     private String username;
     private String email;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // No password field in the response DTO for security
 }

@@ -3,6 +3,7 @@ package com.mylearning.userservice.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mylearning.userservice.dto.UserRequestDto;
 import com.mylearning.userservice.dto.UserResponseDto;
+import com.mylearning.userservice.exception.GlobalExceptionHandler;
 import com.mylearning.userservice.exception.UserNotFoundException;
 import com.mylearning.userservice.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +42,7 @@ class UserControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(userController)
-                .setControllerAdvice()
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
         userResponseDto = UserResponseDto.builder()
@@ -52,10 +53,11 @@ class UserControllerTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        userRequestDto = new UserRequestDto();
-        userRequestDto.setUsername("testuser");
-        userRequestDto.setEmail("test@example.com");
-        userRequestDto.setPassword("password123");
+        userRequestDto = UserRequestDto.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .password("password123")
+                .build();
     }
 
     @Test
@@ -76,7 +78,7 @@ class UserControllerTest {
     void getProfileByUsername_WhenUserExists_ShouldReturnUser() throws Exception {
         when(userService.getProfileByUsername("testuser")).thenReturn(userResponseDto);
 
-        mockMvc.perform(get("/api/users/profile/testuser"))
+        mockMvc.perform(get("/api/users/profile/username/testuser"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username", is("testuser")))
                 .andExpect(jsonPath("$.email", is("test@example.com")));
@@ -87,11 +89,11 @@ class UserControllerTest {
     @Test
     void getProfileByUsername_WhenUserNotExists_ShouldReturnNotFound() throws Exception {
         when(userService.getProfileByUsername("nonexistent"))
-                .thenThrow(new UserNotFoundException("User not found"));
+                .thenThrow(new UserNotFoundException("User not found with username: nonexistent"));
 
-        mockMvc.perform(get("/api/users/profile/nonexistent"))
+        mockMvc.perform(get("/api/users/profile/username/nonexistent"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message", containsString("User not found")));
+                .andExpect(jsonPath("$.message", containsString("User not found with username: nonexistent")));
 
         verify(userService, times(1)).getProfileByUsername("nonexistent");
     }
@@ -110,5 +112,17 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.errors.password").exists());
 
         verify(userService, never()).register(any(UserRequestDto.class));
+    }
+    
+    @Test
+    void getProfileByEmail_WhenUserExists_ShouldReturnUser() throws Exception {
+        when(userService.getProfileByEmail("test@example.com")).thenReturn(userResponseDto);
+
+        mockMvc.perform(get("/api/users/profile/email/test@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username", is("testuser")))
+                .andExpect(jsonPath("$.email", is("test@example.com")));
+
+        verify(userService, times(1)).getProfileByEmail("test@example.com");
     }
 }
