@@ -12,6 +12,8 @@ import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
@@ -29,6 +32,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @CircuitBreaker(name = "paymentService", fallbackMethod = "handlePaymentFailure")
     @Retry(name = "paymentService")
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public PaymentResponseDto processPayment(PaymentRequestDto request) {
         // Validate user by calling user-service
         String userServiceUrl = "http://user-service/api/users/" + request.getUserId();
@@ -52,6 +56,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional(readOnly = true, timeout = 10)
     public PaymentResponseDto getPaymentById(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new PaymentNotFoundException("Payment not found with id: " + id));
@@ -60,6 +65,7 @@ public class PaymentServiceImpl implements PaymentService {
 
 
     @Override
+    @Transactional(readOnly = true, timeout = 15)
     public List<PaymentResponseDto> getAllPayments() {
         return paymentRepository.findAll()
                 .stream()

@@ -9,6 +9,7 @@ import com.mylearning.inventoryservice.util.InventoryMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -20,12 +21,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional(readOnly = true, timeout = 10)
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
 
     @Override
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public InventoryResponseDto save(InventoryRequestDto requestDto) {
         log.info("Saving inventory item for product: {}", requestDto.getProductCode());
         Inventory inventory = inventoryRepository.findByProductCode(requestDto.getProductCode())
@@ -47,13 +49,13 @@ public class InventoryServiceImpl implements InventoryService {
     }
     
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, timeout = 15, propagation = Propagation.REQUIRED)
     public void delete(String productCode) {
         deleteInventory(productCode);
     }
     
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public InventoryResponseDto update(String productCode, InventoryRequestDto requestDto) {
         return updateInventory(productCode, requestDto);
     }
@@ -89,7 +91,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public InventoryResponseDto addInventory(InventoryRequestDto requestDto) {
         log.info("Adding new inventory item for product: {}", requestDto.getProductCode());
         if (inventoryRepository.existsByProductCode(requestDto.getProductCode())) {
@@ -105,7 +107,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public InventoryResponseDto updateInventory(String productCode, InventoryRequestDto requestDto) {
         log.info("Updating inventory for product: {}", productCode);
         Inventory inventory = inventoryRepository.findByProductCode(productCode)
@@ -132,7 +134,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, timeout = 15, propagation = Propagation.REQUIRED)
     public void deleteInventory(String productCode) {
         log.info("Deleting inventory for product: {}", productCode);
         if (!inventoryRepository.existsByProductCode(productCode)) {
@@ -142,7 +144,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public InventoryResponseDto updateInventoryQuantity(String productCode, int quantity) {
         log.info("Updating quantity by {} for product: {}", quantity, productCode);
         Inventory inventory = inventoryRepository.findByProductCode(productCode)

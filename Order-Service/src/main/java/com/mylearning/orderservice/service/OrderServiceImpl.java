@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -42,6 +45,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @CircuitBreaker(name = "orderService", fallbackMethod = "placeOrderFallback")
     @Retry(name = "orderService")
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
     public OrderResponseDto placeOrder(OrderRequestDto requestDto) {
 
         log.info("Start placing order for productCode={} by userId={}", requestDto.getProductCode(), requestDto.getUserId());
