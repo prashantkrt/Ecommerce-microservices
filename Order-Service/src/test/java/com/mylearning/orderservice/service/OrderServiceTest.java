@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -41,6 +42,13 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Set up service URLs
+        ReflectionTestUtils.setField(orderService, "productServiceUrl", "http://product-service/api/products");
+        ReflectionTestUtils.setField(orderService, "inventoryServiceUrl", "http://inventory-service/api/inventory");
+        ReflectionTestUtils.setField(orderService, "paymentServiceUrl", "http://payment-service/api/payments");
+        ReflectionTestUtils.setField(orderService, "userServiceUrl", "http://user-service/api/users");
+        ReflectionTestUtils.setField(orderService, "notificationServiceUrl", "http://notification-service/api/notifications");
+
         orderRequestDto = OrderRequestDto.builder()
                 .userId(1L)
                 .productCode("P001")
@@ -49,7 +57,6 @@ class OrderServiceTest {
 
         order = Order.builder()
                 .id(1L)
-                .userId(1L)
                 .productCode("P001")
                 .quantity(2)
                 .orderDate(LocalDateTime.now())
@@ -67,40 +74,51 @@ class OrderServiceTest {
     @Test
     void placeOrder_WithValidRequest_ShouldReturnOrderResponse() {
         // Arrange
-        when(restTemplate.getForObject(anyString(), eq(ProductDto.class))).thenReturn(productDto);
-        when(restTemplate.getForObject(contains("inventory"), eq(Boolean.class))).thenReturn(true);
-        when(restTemplate.getForObject(contains("users"), eq(UserDto.class))).thenReturn(userDto);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(restTemplate.getForObject(contains("/code/P001"), eq(ProductDto.class))).thenReturn(productDto);
+        when(restTemplate.getForObject(contains("isInStock/P001"), eq(Boolean.class))).thenReturn(true);
+        when(restTemplate.getForObject(contains("users/1"), eq(UserDto.class))).thenReturn(userDto);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order savedOrder = invocation.getArgument(0);
+            savedOrder.setId(1L);
+            return savedOrder;
+        });
 
         // Act
         OrderResponseDto response = orderService.placeOrder(orderRequestDto);
 
         // Assert
         assertNotNull(response);
+        assertEquals(1L, response.getId());
         assertEquals(orderRequestDto.getProductCode(), response.getProductCode());
+        assertEquals(orderRequestDto.getQuantity(), response.getQuantity());
+        assertNotNull(response.getOrderDate());
         verify(orderRepository, times(1)).save(any(Order.class));
+        verify(restTemplate, times(1)).postForEntity(contains("payments/process"), any(), eq(Void.class));
+        verify(restTemplate, times(1)).postForEntity(contains("notifications/send"), any(), eq(Void.class));
     }
 
     @Test
     void placeOrder_WhenProductNotFound_ShouldThrowException() {
         // Arrange
-        when(restTemplate.getForObject(anyString(), eq(ProductDto.class))).thenReturn(null);
+        when(restTemplate.getForObject(contains("/code/P001"), eq(ProductDto.class))).thenReturn(null);
 
         // Act & Assert
-        assertThrows(OrderNotFoundException.class, 
+        RuntimeException exception = assertThrows(RuntimeException.class, 
             () -> orderService.placeOrder(orderRequestDto));
+        assertEquals("Product not found with code: P001", exception.getMessage());
         verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test
     void placeOrder_WhenOutOfStock_ShouldThrowException() {
         // Arrange
-        when(restTemplate.getForObject(anyString(), eq(ProductDto.class))).thenReturn(productDto);
-        when(restTemplate.getForObject(contains("inventory"), eq(Boolean.class))).thenReturn(false);
+        when(restTemplate.getForObject(contains("/code/P001"), eq(ProductDto.class))).thenReturn(productDto);
+        when(restTemplate.getForObject(contains("isInStock/P001"), eq(Boolean.class))).thenReturn(false);
 
         // Act & Assert
-        assertThrows(OutOfStockException.class, 
+        OutOfStockException exception = assertThrows(OutOfStockException.class, 
             () -> orderService.placeOrder(orderRequestDto));
+        assertEquals("Product is out of stock", exception.getMessage());
         verify(orderRepository, never()).save(any(Order.class));
     }
 
@@ -111,9 +129,13 @@ class OrderServiceTest {
 
         // Act
         OrderResponseDto response = orderService.getOrderById(1L);
+        
         // Assert
         assertNotNull(response);
         assertEquals(order.getId(), response.getId());
+        assertEquals(order.getProductCode(), response.getProductCode());
+        assertEquals(order.getQuantity(), response.getQuantity());
+        assertEquals(order.getOrderDate(), response.getOrderDate());
         verify(orderRepository, times(1)).findById(1L);
     }
 
@@ -131,7 +153,6 @@ class OrderServiceTest {
         // Arrange
         Order order2 = Order.builder()
                 .id(2L)
-                .userId(2L)
                 .productCode("P002")
                 .quantity(1)
                 .orderDate(LocalDateTime.now())
@@ -145,6 +166,8 @@ class OrderServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals(2, response.size());
+        assertEquals(order.getId(), response.get(0).getId());
+        assertEquals(order2.getId(), response.get(1).getId());
         verify(orderRepository, times(1)).findAll();
     }
 

@@ -298,4 +298,73 @@ class InventoryServiceTest {
         // Assert
         assertEquals(0, result);
     }
+    
+    @Test
+    void save_WhenProductExists_UpdatesQuantity() {
+        // Arrange
+        Inventory existingInventory = new Inventory(1L, TEST_PRODUCT_CODE, 5);
+        when(inventoryRepository.findByProductCode(TEST_PRODUCT_CODE))
+                .thenReturn(Optional.of(existingInventory));
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(existingInventory);
+        
+        InventoryRequestDto requestDto = new InventoryRequestDto(TEST_PRODUCT_CODE, 10);
+        
+        // Act
+        InventoryResponseDto result = inventoryService.save(requestDto);
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals(15, existingInventory.getQuantity());
+        verify(inventoryRepository).save(existingInventory);
+    }
+    
+    @Test
+    void save_WhenProductNotExists_CreatesNewInventory() {
+        // Arrange
+        when(inventoryRepository.findByProductCode(TEST_PRODUCT_CODE))
+                .thenReturn(Optional.empty());
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(testInventory);
+        
+        InventoryRequestDto requestDto = new InventoryRequestDto(TEST_PRODUCT_CODE, 10);
+        
+        // Act
+        InventoryResponseDto result = inventoryService.save(requestDto);
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals(TEST_PRODUCT_CODE, result.getProductCode());
+        assertEquals(10, result.getQuantity());
+        verify(inventoryRepository).save(any(Inventory.class));
+    }
+    
+    @Test
+    void update_DelegatesToUpdateInventory() {
+        // Arrange
+        InventoryRequestDto updateDto = new InventoryRequestDto(TEST_PRODUCT_CODE, 20);
+        when(inventoryRepository.findByProductCode(TEST_PRODUCT_CODE))
+                .thenReturn(Optional.of(testInventory));
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(testInventory);
+        
+        // Act
+        InventoryResponseDto result = inventoryService.update(TEST_PRODUCT_CODE, updateDto);
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals(20, testInventory.getQuantity());
+        verify(inventoryRepository).save(testInventory);
+    }
+    
+    @Test
+    void delete_DelegatesToDeleteInventory() {
+        // Arrange
+        when(inventoryRepository.existsByProductCode(TEST_PRODUCT_CODE)).thenReturn(true);
+        doNothing().when(inventoryRepository).deleteByProductCode(TEST_PRODUCT_CODE);
+        
+        // Act
+        inventoryService.delete(TEST_PRODUCT_CODE);
+        
+        // Assert
+        verify(inventoryRepository).existsByProductCode(TEST_PRODUCT_CODE);
+        verify(inventoryRepository).deleteByProductCode(TEST_PRODUCT_CODE);
+    }
 }
