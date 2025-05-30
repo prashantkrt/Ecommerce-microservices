@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -366,5 +367,93 @@ class InventoryServiceTest {
         // Assert
         verify(inventoryRepository).existsByProductCode(TEST_PRODUCT_CODE);
         verify(inventoryRepository).deleteByProductCode(TEST_PRODUCT_CODE);
+    }
+    
+    @Test
+    void addInventory_WhenQuantityIsZero_WorksCorrectly() {
+        // Arrange
+        InventoryRequestDto zeroQuantityDto = new InventoryRequestDto("ZERO_QUANTITY", 0);
+        when(inventoryRepository.existsByProductCode("ZERO_QUANTITY")).thenReturn(false);
+        when(inventoryRepository.save(any(Inventory.class))).thenAnswer(invocation -> {
+            Inventory saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+
+        // Act
+        InventoryResponseDto result = inventoryService.addInventory(zeroQuantityDto);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(0, result.getQuantity());
+        assertEquals("ZERO_QUANTITY", result.getProductCode());
+    }
+    
+    @Test
+    void updateInventory_WithNegativeQuantity_UpdatesSuccessfully() {
+        // Arrange
+        InventoryRequestDto negativeQuantityDto = new InventoryRequestDto(TEST_PRODUCT_CODE, -5);
+        when(inventoryRepository.findByProductCode(TEST_PRODUCT_CODE))
+                .thenReturn(Optional.of(testInventory));
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(testInventory);
+        
+        // Act
+        InventoryResponseDto result = inventoryService.updateInventory(TEST_PRODUCT_CODE, negativeQuantityDto);
+        
+        // Assert - The implementation allows negative quantities
+        assertNotNull(result);
+        assertEquals(-5, testInventory.getQuantity());
+        verify(inventoryRepository).save(testInventory);
+    }
+    
+    @Test
+    void areInStock_WithEmptyList_ReturnsEmptyList() {
+        // Act
+        List<InventoryResponseDto> result = inventoryService.areInStock(List.of());
+        
+        // Assert
+        assertTrue(result.isEmpty());
+        // The implementation calls findByProductCodeIn even with empty list
+        verify(inventoryRepository).findByProductCodeIn(any());
+    }
+    
+    @Test
+    void getStockLevel_WhenProductHasMaxQuantity_ReturnsCorrectValue() {
+        // Arrange
+        testInventory.setQuantity(Integer.MAX_VALUE);
+        when(inventoryRepository.findByProductCode(TEST_PRODUCT_CODE))
+                .thenReturn(Optional.of(testInventory));
+                
+        // Act
+        int stockLevel = inventoryService.getStockLevel(TEST_PRODUCT_CODE);
+        
+        // Assert
+        assertEquals(Integer.MAX_VALUE, stockLevel);
+    }
+    
+    @Test
+    void updateInventoryQuantity_WithZeroQuantity_UpdatesCorrectly() {
+        // Arrange
+        when(inventoryRepository.findByProductCode(TEST_PRODUCT_CODE))
+                .thenReturn(Optional.of(testInventory));
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(testInventory);
+        
+        // Act
+        inventoryService.updateInventoryQuantity(TEST_PRODUCT_CODE, 0);
+        
+        // Assert - Quantity should remain unchanged
+        assertEquals(10, testInventory.getQuantity());
+    }
+    
+    @Test
+    void save_WithNullProductCode_ThrowsException() {
+        // Arrange
+        InventoryRequestDto nullCodeDto = new InventoryRequestDto(null, 10);
+        when(inventoryRepository.save(any(Inventory.class))).thenThrow(new DataIntegrityViolationException("Product code cannot be null"));
+        
+        // Act & Assert
+        assertThrows(DataIntegrityViolationException.class, () -> 
+            inventoryService.save(nullCodeDto)
+        );
     }
 }
