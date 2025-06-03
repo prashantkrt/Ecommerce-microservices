@@ -3,6 +3,8 @@ package com.mylearning.paymentservice.service;
 import com.mylearning.paymentservice.dto.PaymentRequestDto;
 import com.mylearning.paymentservice.dto.PaymentResponseDto;
 import com.mylearning.paymentservice.dto.UserDto;
+import com.mylearning.paymentservice.event.OrderCreatedEvent;
+import com.mylearning.paymentservice.event.PaymentProcessedEvent;
 import com.mylearning.paymentservice.entity.Payment;
 import com.mylearning.paymentservice.exception.PaymentFailureException;
 import com.mylearning.paymentservice.exception.PaymentNotFoundException;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -107,5 +110,44 @@ public class PaymentServiceImpl implements PaymentService {
                 .amount(request.getAmount())
                 .status("FAILED")
                 .build();
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class, timeout = 30, propagation = Propagation.REQUIRED)
+    public PaymentProcessedEvent processOrderCreatedEvent(OrderCreatedEvent event) {
+        log.info("Processing payment for order: {}", event.getOrderId());
+        
+        try {
+            // Simulate payment processing
+            // In a real scenario, this would integrate with a payment gateway
+            Thread.sleep(1000); // Simulate processing time
+            
+            // Create and save payment record
+            Payment payment = Payment.builder()
+                    .orderId(Long.parseLong(event.getOrderId()))
+                    .amount(event.getAmount().doubleValue())
+                    .status("COMPLETED")
+                    .userId(Long.parseLong(event.getUserId()))
+                    .paymentDate(LocalDateTime.now())
+                    .build();
+            
+            payment = paymentRepository.save(payment);
+            
+            log.info("Successfully processed payment for order: {}", event.getOrderId());
+            
+            // Return payment processed event
+            return PaymentProcessedEvent.builder()
+                    .paymentId(String.valueOf(payment.getId()))
+                    .orderId(String.valueOf(payment.getOrderId()))
+                    .userId(String.valueOf(payment.getUserId()))
+                    .amount(BigDecimal.valueOf(payment.getAmount()))
+                    .status("COMPLETED")
+                    .transactionId("TXN" + System.currentTimeMillis())
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("Error processing payment for order: {}", event.getOrderId(), e);
+            throw new PaymentFailureException("Payment processing failed: " + e.getMessage());
+        }
     }
 }

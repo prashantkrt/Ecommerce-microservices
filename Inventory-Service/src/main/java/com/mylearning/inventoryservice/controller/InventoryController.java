@@ -23,7 +23,7 @@ public class InventoryController {
     }
 
     @GetMapping("/isInStock/{productCode}")
-    public ResponseEntity<Boolean> isInStock(@PathVariable String productCode) {
+    public ResponseEntity<Boolean> isInStock(@PathVariable("productCode") String productCode) {
         return ResponseEntity.ok(inventoryService.isInStock(productCode));
     }
 
@@ -33,12 +33,14 @@ public class InventoryController {
     }
 
     @PutMapping("/{productCode}")
-    public ResponseEntity<InventoryResponseDto> updateInventory(@PathVariable String productCode, @Valid @RequestBody InventoryRequestDto inventory) {
+    public ResponseEntity<InventoryResponseDto> updateInventory(
+            @PathVariable("productCode") String productCode, 
+            @Valid @RequestBody InventoryRequestDto inventory) {
         return ResponseEntity.ok(inventoryService.update(productCode, inventory));
     }
 
     @DeleteMapping("/{productCode}")
-    public ResponseEntity<Void> deleteInventory(@PathVariable String productCode) {
+    public ResponseEntity<Void> deleteInventory(@PathVariable("productCode") String productCode) {
         inventoryService.delete(productCode);
         return ResponseEntity.noContent().build();
     }

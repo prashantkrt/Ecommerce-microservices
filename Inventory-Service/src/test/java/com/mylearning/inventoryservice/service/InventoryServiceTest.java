@@ -413,7 +413,7 @@ class InventoryServiceTest {
         
         // Assert
         assertTrue(result.isEmpty());
-        // The implementation calls findByProductCodeIn even with empty list
+        // The implementation calls findByProductCodeIn even with an empty list
         verify(inventoryRepository).findByProductCodeIn(any());
     }
     
